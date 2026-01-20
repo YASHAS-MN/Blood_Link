@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Login - LifePulse</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="subportal-bg">
+    <nav class="navbar">
+        <div class="logo">LIFE<span> PULSE</span></div>
+        <a href="/" class="nav-link">Back to Home</a>
+    </nav>
+
+    <div class="hero">
+        <div class="form-box">
+            <h2 style="color:white; text-align:center;">Access Portal</h2>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div style="background:rgba(255,0,51,0.2); color:#ff3333; padding:10px; margin-bottom:15px; border:1px solid #ff0033; border-radius:5px; text-align:center;">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="/login" method="POST">
+                <label class="input-label">EMAIL ADDRESS</label>
+                <input type="email" name="email" class="input-field" required>
+
+                <label class="input-label">PASSWORD</label>
+                <input type="password" name="password" class="input-field" required>
+
+                <button type="submit" class="btn-full">LOGIN</button>
+            </form>
+            <p style="margin-top:20px; color:#666; text-align:center;">New here? <a href="/signup" style="color:var(--neo-red);">Sign Up</a></p>
+        </div>
+    </div>
+</body>
+</html>

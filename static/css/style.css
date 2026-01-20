@@ -1,0 +1,751 @@
+/* static/css/style.css - ENHANCED MINIMAL NEON RED THEME */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --neo-red: #ff0033;
+    --dim-red: #cc0029;
+    --text-white: #ffffff;
+    --text-light: #e0e0e0;
+    --text-muted: #999999;
+    --pure-black: #000000;
+    --panel-black: #0a0a0a;
+    --border-dark: #1a1a1a;
+    --glow-red: rgba(255, 0, 51, 0.6);
+    --glow-soft: rgba(255, 0, 51, 0.2);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--pure-black);
+    color: var(--text-white);
+    font-family: 'Poppins', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* ==================== BACKGROUND ANIMATIONS ==================== */
+.animation-wrapper {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* Blurred breathing heart at center */
+.central-pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, var(--neo-red) 0%, rgba(255, 0, 51, 0.4) 40%, transparent 70%);
+    border-radius: 50%;
+    opacity: 0.3;
+    filter: blur(100px);
+    animation: breathe 3s ease-in-out infinite;
+}
+
+@keyframes breathe {
+    0%, 100% { 
+        transform: translate(-50%, -50%) scale(1); 
+        opacity: 0.25;
+    }
+    50% { 
+        transform: translate(-50%, -50%) scale(1.3); 
+        opacity: 0.4;
+    }
+}
+
+/* ECG Pulse Line Animation - Hospital Monitor Style */
+.ecg-line {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 150px;
+    transform: translateY(-50%);
+    overflow: visible;
+    z-index: 1;
+}
+
+/* Baseline horizontal line */
+.ecg-line::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--neo-red);
+    opacity: 0.3;
+    transform: translateY(-50%);
+    box-shadow: 0 0 5px var(--glow-red);
+}
+
+/* ECG waveform */
+.ecg-line::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -20%;
+    width: 20%;
+    height: 4px;
+    background: var(--neo-red);
+    transform: translateY(-50%);
+    box-shadow: 
+        0 0 10px var(--glow-red),
+        0 0 20px var(--glow-red),
+        0 0 30px var(--glow-red);
+    animation: ecg-wave 3s linear infinite;
+    clip-path: polygon(
+        0% 50%, 
+        5% 50%, 
+        8% 50%, 
+        10% 20%, 
+        11% 80%, 
+        12% 40%, 
+        14% 60%, 
+        15% 50%, 
+        95% 50%, 
+        100% 50%
+    );
+}
+
+@keyframes ecg-wave {
+    0% {
+        left: -20%;
+        opacity: 0;
+    }
+    5% {
+        opacity: 1;
+    }
+    95% {
+        opacity: 1;
+    }
+    100% {
+        left: 100%;
+        opacity: 0;
+    }
+}
+
+/* Enhanced flowing blood particles */
+.blood-particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--neo-red);
+    border-radius: 50%;
+    opacity: 0;
+    box-shadow: 0 0 15px var(--glow-red), 0 0 25px var(--glow-red);
+    animation: particle-flow 12s linear infinite;
+}
+
+.blood-particle:nth-child(3) { left: 10%; animation-delay: 0s; animation-duration: 10s; }
+.blood-particle:nth-child(4) { left: 25%; animation-delay: 2s; animation-duration: 13s; }
+.blood-particle:nth-child(5) { left: 40%; animation-delay: 4s; animation-duration: 11s; }
+.blood-particle:nth-child(6) { left: 55%; animation-delay: 6s; animation-duration: 14s; }
+.blood-particle:nth-child(7) { left: 70%; animation-delay: 3s; animation-duration: 12s; }
+.blood-particle:nth-child(8) { left: 85%; animation-delay: 5s; animation-duration: 13s; }
+
+@keyframes particle-flow {
+    0% { top: -5%; opacity: 0; transform: scale(0.8); }
+    10% { opacity: 0.7; transform: scale(1); }
+    90% { opacity: 0.7; transform: scale(1); }
+    100% { top: 105%; opacity: 0; transform: scale(0.8); }
+}
+
+/* Subtle vein lines */
+.vein-line {
+    position: absolute;
+    width: 1px;
+    height: 100vh;
+    background: linear-gradient(to bottom, transparent, var(--neo-red), transparent);
+    opacity: 0.05;
+    animation: vein-pulse 4s ease-in-out infinite;
+}
+
+.vein-line:nth-child(8) { left: 20%; animation-delay: 0s; }
+.vein-line:nth-child(9) { left: 50%; animation-delay: 1.3s; }
+.vein-line:nth-child(10) { left: 80%; animation-delay: 2.6s; }
+
+@keyframes vein-pulse {
+    0%, 100% { opacity: 0.03; }
+    50% { opacity: 0.1; }
+}
+
+/* ==================== NAVBAR ==================== */
+.navbar {
+    position: relative;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 8%;
+    background: rgba(0, 0, 0, 0.95);
+    border-bottom: 1px solid var(--border-dark);
+    backdrop-filter: blur(20px);
+}
+
+.logo {
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--text-white);
+    text-shadow: 0 0 20px var(--glow-red);
+}
+
+.logo span {
+    color: var(--neo-red);
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.nav-link {
+    color: var(--text-light);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--neo-red);
+    transition: width 0.3s;
+}
+
+.nav-link:hover {
+    color: var(--neo-red);
+}
+
+.nav-link:hover::after {
+    width: 100%;
+}
+
+.btn-signup-nav, .nav-btn {
+    background: var(--neo-red);
+    color: var(--text-white);
+    padding: 0.75rem 1.8rem;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    box-shadow: 0 0 20px var(--glow-soft);
+    transition: all 0.3s;
+}
+
+.btn-signup-nav:hover, .nav-btn:hover {
+    box-shadow: 0 0 30px var(--glow-red);
+    transform: translateY(-2px);
+}
+
+/* ==================== HERO SECTION ==================== */
+.hero {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 10vh 8% 8vh;
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.main-title {
+    font-size: clamp(3rem, 7vw, 6rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    letter-spacing: -1px;
+    text-shadow: 0 0 40px var(--glow-red);
+    white-space: nowrap;
+}
+
+.main-title span {
+    color: var(--neo-red);
+}
+
+.slogan {
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    font-weight: 300;
+    color: var(--text-light);
+    margin: 2rem auto 5rem;
+    max-width: 900px;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+/* ==================== GLASS CARDS WITH BETTER ALIGNMENT ==================== */
+.card-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text-white);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 280px;
+}
+
+.glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, var(--glow-soft), transparent);
+    opacity: 0;
+    transition: opacity 0.4s;
+    z-index: 0;
+}
+
+.glass-card:hover::before {
+    opacity: 1;
+}
+
+.glass-card:hover {
+    transform: translateY(-10px);
+    border-color: var(--neo-red);
+    box-shadow: 0 20px 60px var(--glow-soft);
+}
+
+.icon {
+    font-size: 4.5rem;
+    margin-bottom: 1.5rem;
+    display: block;
+    position: relative;
+    z-index: 1;
+    filter: grayscale(0.2) brightness(1.1);
+}
+
+.card-head {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.8rem;
+    position: relative;
+    z-index: 1;
+    color: var(--text-white);
+}
+
+.card-txt {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    position: relative;
+    z-index: 1;
+}
+
+/* ==================== CONTACT SECTION ==================== */
+.contact-section {
+    background: linear-gradient(to bottom, transparent, rgba(255, 0, 51, 0.05));
+    padding: 5rem 8%;
+    text-align: center;
+    border-top: 1px solid var(--border-dark);
+    margin-top: 4rem;
+    position: relative;
+    z-index: 10;
+}
+
+.contact-section h2 {
+    color: var(--neo-red);
+    font-size: 2.2rem;
+    margin-bottom: 2.5rem;
+    font-weight: 700;
+}
+
+.contact-info p {
+    font-size: 1rem;
+    color: var(--text-light);
+    margin: 1rem 0;
+    line-height: 1.8;
+}
+
+.contact-info strong {
+    color: var(--text-white);
+}
+
+/* ==================== FOOTER ==================== */
+footer {
+    padding: 2.5rem 8%;
+    text-align: center;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-dark);
+    font-size: 0.9rem;
+    position: relative;
+    z-index: 10;
+}
+
+/* ==================== FORM ELEMENTS ==================== */
+.form-box {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 3rem 2.5rem;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+    position: relative;
+}
+
+.form-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neo-red), transparent);
+}
+
+.input-label {
+    display: block;
+    color: var(--text-light);
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.6rem;
+    letter-spacing: 0.5px;
+}
+
+.input-field, select.input-field {
+    width: 100%;
+    padding: 1rem 1.2rem;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-white);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s;
+    font-family: 'Poppins', sans-serif;
+}
+
+.input-field:focus, select.input-field:focus {
+    outline: none;
+    border-color: var(--neo-red);
+    box-shadow: 0 0 15px var(--glow-soft);
+}
+
+select.input-field option {
+    background: #1a1a1a;
+    color: var(--text-white);
+}
+
+.btn-full {
+    width: 100%;
+    padding: 1.1rem;
+    background: var(--neo-red);
+    color: var(--text-white);
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    box-shadow: 0 0 20px var(--glow-soft);
+    transition: all 0.3s;
+}
+
+.btn-full:hover {
+    box-shadow: 0 0 30px var(--glow-red);
+    transform: translateY(-2px);
+}
+
+/* ==================== DASHBOARD STYLES ==================== */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 2.5rem;
+    max-width: 1400px;
+    margin: 4rem auto;
+    padding: 0 8%;
+}
+
+.sidebar {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    backdrop-filter: blur(10px);
+    height: fit-content;
+}
+
+.main-content {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 3rem;
+    backdrop-filter: blur(10px);
+}
+
+.stat-card {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    transition: all 0.3s;
+}
+
+.stat-card:hover {
+    border-color: var(--neo-red);
+    box-shadow: 0 0 20px var(--glow-soft);
+}
+
+/* ==================== TABLES ==================== */
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 0.8rem;
+}
+
+thead tr th {
+    text-align: left;
+    padding: 1rem 1.2rem;
+    color: var(--neo-red);
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    border: none;
+}
+
+tbody tr td {
+    padding: 1.2rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+tbody tr td:first-child {
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px 0 0 10px;
+}
+
+tbody tr td:last-child {
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 0 10px 10px 0;
+}
+
+/* ==================== PORTAL PAGES ==================== */
+.subportal-bg {
+    background: var(--pure-black);
+}
+
+.hero-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 85vh;
+    padding: 3rem 8%;
+    position: relative;
+    z-index: 10;
+}
+
+.form-container {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 3rem;
+    backdrop-filter: blur(20px);
+    width: 100%;
+    max-width: 900px;
+}
+
+.donor-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid var(--neo-red);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.donor-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 20px var(--glow-soft);
+}
+
+.donor-name {
+    font-weight: 600;
+    color: var(--neo-red);
+    margin-bottom: 0.5rem;
+}
+
+.center-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 85vh;
+    padding: 3rem 8%;
+    position: relative;
+    z-index: 10;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 1200px) {
+    .card-container {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 968px) {
+    .navbar {
+        padding: 1.5rem 5%;
+    }
+    
+    .hero {
+        padding: 8vh 5%;
+    }
+    
+    .card-container {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        max-width: 400px;
+    }
+    
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        padding: 0 5%;
+    }
+    
+    .contact-section {
+        padding: 4rem 5%;
+    }
+    
+    .main-title {
+        font-size: 2.5rem;
+        white-space: normal;
+    }
+    
+    .slogan {
+        font-size: 1.1rem;
+        white-space: normal;
+    }
+}
+
+@media (max-width: 640px) {
+    .logo {
+        font-size: 1.4rem;
+    }
+    
+    .nav-links {
+        gap: 1rem;
+    }
+    
+    .btn-signup-nav, .nav-btn {
+        padding: 0.6rem 1.3rem;
+        font-size: 0.85rem;
+    }
+    
+    .card-container {
+        max-width: 100%;
+    }
+}
+
+/* --- TABLE ACTIONS & MODAL --- */
+.action-btn {
+    padding: 5px 10px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    margin-right: 5px;
+}
+.btn-edit { background: #333; color: white; border: 1px solid #555; }
+.btn-edit:hover { background: white; color: black; }
+
+.btn-delete { background: rgba(255, 0, 51, 0.2); color: var(--neo-red); border: 1px solid var(--neo-red); }
+.btn-delete:hover { background: var(--neo-red); color: white; }
+
+/* The Modal (background) */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; 
+    z-index: 1000; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.8); 
+    backdrop-filter: blur(5px);
+}
+
+/* Modal Content */
+.modal-content {
+    background-color: #0a0a0a;
+    margin: 10% auto; 
+    padding: 30px;
+    border: 1px solid var(--neo-red);
+    width: 90%;
+    max-width: 500px;
+    border-radius: 15px;
+    box-shadow: 0 0 50px rgba(255, 0, 51, 0.3);
+    position: relative;
+}
+
+.close-modal {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.close-modal:hover { color: white; }
+
+.badge-verified {
+    background: rgba(0, 255, 128, 0.1);
+    color: #00ff80;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    border: 1px solid #00ff80;
+}
+.badge-pending {
+    background: rgba(255, 165, 0, 0.1);
+    color: orange;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    border: 1px solid orange;
+}

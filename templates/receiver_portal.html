@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Find Blood</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="subportal-bg">
+    <nav class="navbar">
+        <div class="logo">FIND<span> BLOOD</span></div>
+        <a href="/logout" class="nav-link">Log Out</a>
+    </nav>
+
+    <div class="hero-container">
+        <div class="form-container">
+            <h2 style="color:var(--neo-red); text-align:center; margin-bottom:30px;">Emergency Search</h2>
+
+            <form action="/search_blood/{{ user_id }}" method="POST" style="display:flex; gap:10px; margin-bottom:40px;">
+                <select name="required_blood" class="input-field" style="flex:1;" required>
+                    <option value="">Blood Group</option>
+                    <option value="A+">A+</option> <option value="A-">A-</option>
+                    <option value="B+">B+</option> <option value="B-">B-</option>
+                    <option value="AB+">AB+</option> <option value="AB-">AB-</option>
+                    <option value="O+">O+</option> <option value="O-">O-</option>
+                </select>
+                
+                <input type="text" name="location" class="input-field" placeholder="Enter City (e.g. New Delhi)" style="flex:2;" required>
+                
+                <button type="submit" class="btn-full" style="flex:1;">SEARCH</button>
+            </form>
+
+            {% if searched %}
+            <h3 style="color:white; margin-bottom:20px;">Results</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Donor Name</th>
+                        <th>Blood Group</th>
+                        <th>Location</th>
+                        <th>Phone</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if donors %}
+                        {% for donor in donors %}
+                        <tr>
+                            <td>{{ donor.full_name }}</td>
+                            <td style="color:var(--neo-red); font-weight:bold;">{{ donor.blood_group }}</td>
+                            <td>{{ donor.current_location }}</td>
+                            <td>{{ donor.phone_number }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="4" style="text-align:center; padding:20px;">No donors found in this location.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

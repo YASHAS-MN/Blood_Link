@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGO Admin | LifePulse</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="subportal-bg">
+
+    <div class="animation-wrapper">
+        <div class="central-pulse"></div>
+        <div class="ecg-line"></div>
+        <div class="blood-particle"></div>
+        <div class="blood-particle"></div>
+        <div class="vein-line"></div>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">NGO<span> ADMIN</span></div>
+        <a href="/" class="nav-link">← Back to Home</a>
+    </nav>
+
+    <div class="center-container">
+        <div class="form-box" style="max-width:520px; width:100%;">
+            <h2 style="text-align:center; margin-bottom:2.5rem; font-size:2rem;">
+                Organization <span style="color:var(--neo-red);">Registry</span>
+            </h2>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div style="background:rgba(255,0,51,0.15); color:#ff4d4d; padding:12px; margin-bottom:20px; border:1px solid #ff0033; border-radius:8px; text-align:center; font-size:0.9rem;">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="/ngo_signup" method="POST">
+                <label class="input-label">ORGANIZATION NAME</label>
+                <input type="text" name="full_name" class="input-field" placeholder="Organization Name" required>
+
+                <label class="input-label">OFFICIAL EMAIL</label>
+                <input type="email" name="email" class="input-field" placeholder="Official Email" required>
+
+                <label class="input-label">CONTACT NUMBER</label>
+                <input type="text" name="phone" class="input-field" placeholder="Official Contact No." required>
+
+                <label class="input-label">REGISTRATION ID</label>
+                <input type="text" name="ngo_id" class="input-field" placeholder="License / Registration ID" required>
+
+                <label class="input-label">PASSWORD</label>
+                <input type="password" name="password" class="input-field" placeholder="Password" required>
+
+                <button type="submit" class="btn-full" style="margin-top:1.5rem;">VERIFY & REGISTER</button>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

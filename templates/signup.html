@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup - LifePulse</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="subportal-bg">
+
+    <div class="animation-wrapper">
+        <div class="central-pulse"></div>
+        <div class="ecg-line"></div>
+        <div class="blood-particle"></div>
+        <div class="blood-particle"></div>
+        <div class="vein-line"></div>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">LIFE<span>PULSE</span></div>
+        <a href="/" class="nav-link">Back to Home</a>
+    </nav>
+
+    <div class="hero" style="padding: 40px 20px; display: flex; justify-content: center; align-items: center; min-height: 85vh;">
+        <div class="form-box" style="max-width: 500px; width: 100%;">
+            <h2 style="margin-bottom: 2.5rem; color: white; text-align: center; font-size: 2rem;">Create Profile</h2>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div style="background:rgba(255,0,51,0.15); color:#ff4d4d; padding:12px; margin-bottom:20px; border:1px solid #ff0033; border-radius:8px; text-align:center; font-size:0.9rem;">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="/signup" method="POST">
+                <label class="input-label">FULL NAME</label>
+                <input type="text" name="full_name" class="input-field" required>
+
+                <label class="input-label">EMAIL ADDRESS</label>
+                <input type="email" name="email" class="input-field" required>
+
+                <label class="input-label">PHONE NUMBER</label>
+                <input type="tel" name="phone" class="input-field" required pattern="[0-9]{10}" placeholder="10-digit number">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label class="input-label">ROLE</label>
+                        <select name="user_type" class="input-field">
+                            <option value="donor">Donor</option>
+                            <option value="receiver">Receiver</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="input-label">BLOOD GROUP</label>
+                        <select name="blood_group" class="input-field">
+                            <option>A+</option>
+                            <option>A-</option>
+                            <option>B+</option>
+                            <option>B-</option>
+                            <option>AB+</option>
+                            <option>AB-</option>
+                            <option>O+</option>
+                            <option>O-</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label class="input-label">PASSWORD</label>
+                <input type="password" name="password" class="input-field" required>
+
+                <button type="submit" class="btn-full" style="margin-top: 1.5rem;">CREATE ACCOUNT</button>
+            </form>
+
+            <p style="margin-top: 2rem; color:#999; font-size:0.9rem; text-align:center;">
+                Already a member? <a href="/login" style="color:var(--neo-red); font-weight:600; text-decoration:none;">Login</a>
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Donor Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="subportal-bg">
+    <nav class="navbar">
+        <div class="logo">DONOR<span> DASHBOARD</span></div>
+        <a href="/logout" class="nav-link">Log Out</a>
+    </nav>
+
+    <div class="dashboard-grid">
+        <div class="sidebar">
+            <h3 style="color:white; margin-bottom:20px;">My Profile</h3>
+            <p style="color:#888;">Blood Group: <strong style="color:var(--neo-red); font-size:1.5rem;">{{ blood_group }}</strong></p>
+            
+            <form action="/update_donor/{{ user_id }}" method="POST" style="margin-top:30px;">
+                <label style="color:white;">Update Location</label>
+                <input type="text" name="location" class="input-field" placeholder="City" style="margin-bottom:10px;">
+                <button type="submit" class="btn-full">Update</button>
+            </form>
+        </div>
+
+        <div class="main-content">
+            <h2 style="color:white; margin-bottom:20px;">Community Donors ({{ blood_group }})</h2>
+            <p style="color:#666; margin-bottom:20px;">List of other registered donors with your blood group.</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Location</th>
+                        <th>Contact</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if peers %}
+                        {% for peer in peers %}
+                        <tr>
+                            <td>{{ peer.full_name }}</td>
+                            <td>{{ peer.current_location }}</td>
+                            <td>{{ peer.phone_number }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="3" style="text-align:center; color:#666;">No other donors found yet.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
