@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donate Blood - LifePulse</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="subportal-bg">
+
+    <nav class="navbar">
+        <div class="logo">LIFE<span> PULSE</span></div>
+        <a href="/user_portal" class="nav-btn">Back</a>
+    </nav>
+
+    <div style="max-width: 1000px; margin: 5rem auto; padding: 0 5%;">
+        <h1 style="text-align: center; color: white; margin-bottom: 3rem;">DONATE BLOOD</h1>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3rem;">
+            
+            <!-- SIGN UP CARD -->
+            <a href="/donor_signup" style="text-decoration: none;">
+                <div class="form-container" style="padding: 3rem; text-align: center; cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease; height: 100%;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">📝</div>
+                    <h2 style="color: var(--neo-red); margin-bottom: 1rem;">NEW DONOR?</h2>
+                    <p style="color: #aaa; font-size: 1rem; line-height: 1.6;">
+                        Create a new account and register as a blood donor. Get started in just a few minutes!
+                    </p>
+                </div>
+            </a>
+
+            <!-- LOGIN CARD -->
+            <a href="/donor_login" style="text-decoration: none;">
+                <div class="form-container" style="padding: 3rem; text-align: center; cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease; height: 100%;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">🔐</div>
+                    <h2 style="color: var(--neo-red); margin-bottom: 1rem;">RETURNING DONOR?</h2>
+                    <p style="color: #aaa; font-size: 1rem; line-height: 1.6;">
+                        Login to your account and manage your availability status.
+                    </p>
+                </div>
+            </a>
+
+        </div>
+    </div>
+
+        </div>
+    </div>
+
+    <section class="contact-section">
+        <h2>Contact Us</h2>
+        <div class="contact-info">
+            <p><strong>NGO Name:</strong> LifePulse Foundation</p>
+            <p><strong>Email:</strong> info@lifepulse.org</p>
+            <p><strong>Phone:</strong> +91-123-456-7890</p>
+            <p><strong>Address:</strong> 123 Blood Drive, City, State, India</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>Developed with ❤️ by Yashas M N, RVCE for saving lives | LifePulse 2026</p>
+    </footer>
+
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donor Dashboard - LifePulse</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        function toggleAvailability() {
+            console.log('[JS] Toggle called for donor: {{ donor_id }}');
+            const url = `/update_donor_availability_self/{{ donor_id }}`;
+            console.log('[JS] Sending POST to:', url);
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log('[JS] Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('[JS] Response data:', data);
+                if(data.success) {
+                    // Update the DOM immediately instead of reloading
+                    const statusElement = document.getElementById('availability-status');
+                    const buttonElement = document.getElementById('availability-button');
+                    const newStatus = data.new_status;
+                    const statusText = newStatus ? 'AVAILABLE' : 'NOT AVAILABLE';
+                    
+                    console.log('[JS] Updating UI - new status:', statusText);
+                    
+                    // Update status display
+                    statusElement.textContent = statusText;
+                    statusElement.style.color = newStatus ? 'var(--neo-red)' : '#888';
+                    
+                    // Update button text and color
+                    buttonElement.textContent = 'Mark as ' + (newStatus ? 'NOT AVAILABLE' : 'AVAILABLE');
+                    buttonElement.style.background = newStatus ? '#666' : 'var(--neo-red)';
+                    
+                    alert(data.message);
+                } else {
+                    console.log('[JS] Error response:', data.message);
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => {
+                console.error('[JS] Fetch failed:', err);
+                alert('Failed to update availability: ' + err.message);
+            });
+        }
+    </script>
+</head>
+<body class="subportal-bg">
+
+    <nav class="navbar">
+        <div class="logo">LIFE<span> PULSE</span></div>
+        <a href="/donor_logout" class="nav-btn">Log Out</a>
+    </nav>
+
+    <div style="max-width: 800px; margin: 5rem auto; padding: 0 5%;">
+        
+        <div class="form-container" style="padding: 3rem; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem; color: var(--neo-red);">✓</div>
+            <h2 style="color: white; margin-bottom: 0.5rem;">WELCOME, {{ donor_name }}</h2>
+            <p style="color: #aaa; margin-bottom: 2rem; font-size: 0.95rem;">{{ donor_email }}</p>
+            
+            <div style="background: rgba(255, 77, 79, 0.1); padding: 2rem; border-radius: 8px; border: 1px solid rgba(255, 77, 79, 0.3); margin-bottom: 2rem;">
+                <p style="color: white; margin-bottom: 1.5rem; font-size: 1rem;">
+                    Your current availability status: 
+                    <strong id="availability-status" style="color: var(--neo-red); font-size: 1.2rem;">
+                        {% if donor_available %}AVAILABLE{% else %}NOT AVAILABLE{% endif %}
+                    </strong>
+                </p>
+                
+                <button 
+                    id="availability-button"
+                    onclick="toggleAvailability()" 
+                    class="btn-full"
+                    style="padding: 12px; background: {% if donor_available %}#666{% else %}var(--neo-red){% endif %};">
+                    Mark as {% if donor_available %}NOT AVAILABLE{% else %}AVAILABLE{% endif %}
+                </button>
+            </div>
+
+            <div style="background: rgba(100, 150, 200, 0.1); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(100, 150, 200, 0.3); text-align: left;">
+                <h3 style="color: var(--neo-red); margin-top: 0;">Your Profile Information</h3>
+                <p style="color: #aaa; margin: 10px 0;">
+                    <strong style="color: white;">Blood Group:</strong> {{ donor_blood_group }}
+                </p>
+                <p style="color: #aaa; margin: 10px 0;">
+                    <strong style="color: white;">Location:</strong> {{ donor_location }}
+                </p>
+                <p style="color: #aaa; margin: 10px 0;">
+                    <strong style="color: white;">Phone:</strong> {{ donor_phone }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <section class="contact-section">
+        <h2>Contact Us</h2>
+        <div class="contact-info">
+            <p><strong>NGO Name:</strong> LifePulse Foundation</p>
+            <p><strong>Email:</strong> info@lifepulse.org</p>
+            <p><strong>Phone:</strong> +91-123-456-7890</p>
+            <p><strong>Address:</strong> 123 Blood Drive, City, State, India</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>Developed with ❤️ by Yashas M N, RVCE for saving lives | LifePulse 2026</p>
+    </footer>
+
+</body>
+</html>

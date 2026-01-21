@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGO Portal - LifePulse</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        // Auto-refresh donor data every 5 seconds to keep in sync with database
+        function refreshDonorData() {
+            // Reload the page to get the latest donor statuses
+            location.reload();
+        }
+        
+        // Set up auto-refresh on page load
+        window.addEventListener('load', function() {
+            // Refresh every 5 seconds
+            setInterval(refreshDonorData, 5000);
+        });
+    </script>
+</head>
+<body class="subportal-bg">
+
+    <nav class="navbar">
+        <div class="logo">LIFE<span> PULSE</span></div>
+        <a href="/logout" class="nav-btn">Log Out</a>
+    </nav>
+
+    <div style="max-width: 1400px; margin: 3rem auto; padding: 0 5%;">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div style="text-align: center; color: var(--neo-red); margin-bottom: 20px;">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- DONOR SEARCH & MANAGEMENT TABLE -->
+        <div class="form-container" style="max-width: 100%; margin-bottom: 3rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="color: white; margin: 0;">DONOR MANAGEMENT</h2>
+                <span style="color: #666; font-size: 0.9rem;">Total Donors: {{ donors|length }}</span>
+            </div>
+
+            <!-- SEARCH FORM -->
+            <div style="background: rgba(255, 77, 79, 0.05); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255, 77, 79, 0.2); margin-bottom: 1.5rem;">
+                <form action="/search_donors_ngo/{{ user_id }}" method="POST" style="display: flex; gap: 10px; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label class="input-label" style="display: block; margin-bottom: 8px;">Search Donor by Name or Email</label>
+                        <input 
+                            type="text" 
+                            name="search_query" 
+                            class="input-field" 
+                            placeholder="Enter donor name or email..."
+                            value="{{ search_query or '' }}"
+                            style="margin: 0; width: 100%;">
+                    </div>
+                    <button type="submit" class="btn-full" style="padding: 10px 20px; min-width: 120px; margin: 0;">SEARCH</button>
+                    <a href="/ngo_portal/{{ user_id }}" class="btn-full" style="padding: 10px 20px; min-width: 100px; margin: 0; text-align: center; background: #666; text-decoration: none;">CLEAR</a>
+                </form>
+                {% if search_query %}
+                    <p style="color: #aaa; font-size: 0.9rem; margin-top: 10px;">Showing results for: <strong style="color: var(--neo-red);">{{ search_query }}</strong></p>
+                {% endif %}
+            </div>
+
+            <!-- DONORS TABLE -->
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Donor Name</th>
+                            <th>Email</th>
+                            <th>Blood Group</th>
+                            <th>Location</th>
+                            <th>Phone</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if donors %}
+                            {% for donor in donors %}
+                            <tr>
+                                <td style="color: white;">{{ donor.full_name }}</td>
+                                <td style="color: #ccc; font-size: 0.9rem;">{{ donor.email }}</td>
+                                <td style="color: var(--neo-red); font-weight: bold; text-align: center;">{{ donor.blood_group }}</td>
+                                <td>{{ donor.current_location }}</td>
+                                <td>{{ donor.phone_number }}</td>
+                            <td style="text-align: center;">
+                                    {% if donor.is_available %}
+                                        <span class="badge-verified">Available</span>
+                                    {% else %}
+                                        <span class="badge-pending">Unavailable</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="6" style="text-align: center; color: #666;">No donors found.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- DONATION HISTORY TABLE -->
+        <div class="form-container" style="max-width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="color: white; margin: 0;">COMPLETE DONATION HISTORY</h2>
+                <span style="color: #666; font-size: 0.9rem;">Total Donations: {{ donations|length }}</span>
+            </div>
+            
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Donor Name</th>
+                            <th>Donor Email</th>
+                            <th>Blood Group</th>
+                            <th>Location</th>
+                            <th>Phone</th>
+                            <th>Times Donated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if donations %}
+                            {% for record in donations %}
+                            <tr>
+                                <td>{{ record.donation_date }}</td>
+                                <td style="color: white;">{{ record.donor_name }}</td>
+                                <td style="color: #ccc; font-size: 0.9rem;">{{ record.donor_email }}</td>
+                                <td style="color: var(--neo-red); font-weight: bold; text-align: center;">{{ record.blood_group }}</td>
+                                <td>{{ record.location }}</td>
+                                <td>{{ record.donor_phone }}</td>
+                                <td style="text-align: center;">
+                                    {% set count = namespace(value=0) %}
+                                    {% for d in donations %}
+                                        {% if d.donor_email == record.donor_email %}
+                                            {% set count.value = count.value + 1 %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    <strong style="color: var(--neo-red);">{{ count.value }}</strong>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="7" style="text-align: center; color: #666;">No donation records found.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

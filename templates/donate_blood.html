@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donate Blood - LifePulse</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        function toggleAvailability() {
+            const email = document.getElementById('donor_email').value;
+            
+            const formData = new FormData();
+            formData.append('email', email);
+            
+            fetch('/update_donor_availability', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json()).then(data => {
+                if(data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            }).catch(err => alert('Failed to update availability'));
+        }
+    </script>
+</head>
+<body class="subportal-bg">
+
+    <nav class="navbar">
+        <div class="logo">LIFE<span> PULSE</span></div>
+        <a href="/user_portal" class="nav-btn">Back</a>
+    </nav>
+
+    <div style="max-width: 800px; margin: 3rem auto; padding: 0 5%;">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div style="text-align: center; color: var(--neo-red); margin-bottom: 20px; background: rgba(255, 77, 79, 0.1); padding: 10px; border-radius: 5px;">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- REGISTRATION FORM (Only for new donors) -->
+        {% if not is_registered %}
+            <div class="form-container" style="padding: 3rem;">
+                <h2 style="color: white; margin-bottom: 2rem; text-align: center;">REGISTER AS A DONOR</h2>
+                
+                <form action="/register_donor" method="POST" style="display: grid; gap: 15px;">
+                    
+                    <div>
+                        <label class="input-label">Full Name</label>
+                        <input type="text" name="full_name" class="input-field" placeholder="Your full name" required style="margin: 0;">
+                    </div>
+
+                    <div>
+                        <label class="input-label">Email</label>
+                        <input type="email" name="email" class="input-field" placeholder="your.email@example.com" required style="margin: 0;">
+                    </div>
+
+                    <div>
+                        <label class="input-label">Phone Number</label>
+                        <input type="tel" name="phone_number" class="input-field" placeholder="10-digit phone number" required style="margin: 0;">
+                    </div>
+
+                    <div>
+                        <label class="input-label">Blood Group</label>
+                        <select name="blood_group" class="input-field" required style="margin: 0;">
+                            <option value="">Select Blood Group</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="input-label">Location</label>
+                        <input type="text" name="location" class="input-field" placeholder="Your city or area" required style="margin: 0;">
+                    </div>
+
+                    <button type="submit" class="btn-full" style="padding: 12px; margin-top: 10px;">REGISTER</button>
+                </form>
+            </div>
+        {% else %}
+            <!-- SUCCESS MESSAGE FOR RETURNING DONORS -->
+            <div class="form-container" style="padding: 3rem; text-align: center;">
+                <div style="font-size: 3rem; margin-bottom: 1rem; color: var(--neo-red);">✓</div>
+                <h2 style="color: white; margin-bottom: 0.5rem;">YOU HAVE REGISTERED</h2>
+                <p style="color: #aaa; margin-bottom: 2rem;">Thank you for being a life-saver!</p>
+                
+                <input type="hidden" id="donor_email" value="{{ donor_email }}">
+                
+                <div style="background: rgba(255, 77, 79, 0.1); padding: 2rem; border-radius: 8px; border: 1px solid rgba(255, 77, 79, 0.3);">
+                    <p style="color: white; margin-bottom: 1rem; font-size: 1rem;">
+                        Your current availability status: 
+                        <strong style="color: var(--neo-red); font-size: 1.1rem;">
+                            {% if donor_status %}Available{% else %}Not Available{% endif %}
+                        </strong>
+                    </p>
+                    
+                    <button 
+                        onclick="toggleAvailability()" 
+                        class="btn-full"
+                        style="padding: 12px; margin-top: 10px; background: {% if donor_status %}#666{% else %}var(--neo-red){% endif %};">
+                        Mark as {% if donor_status %}Not Available{% else %}Available{% endif %}
+                    </button>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+</body>
+</html>

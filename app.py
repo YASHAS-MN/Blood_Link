@@ -1,6 +1,6 @@
-# app.py
+# app.py - New Architecture - Blood Link Platform
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -20,79 +20,333 @@ app = Flask(__name__,
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = os.getenv('SECRET_KEY') or 'blood_save_life_2026'
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 
 db = SQLAlchemy(app)
 
+# ========== HOME & PORTAL ROUTES ==========
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/signup', methods=['GET', 'POST'])
-def signup():
+@app.route('/user_portal')
+def user_portal():
+    return render_template('user_portal.html')
+
+# ========== RECEIVE BLOOD (No Auth Required) ==========
+@app.route('/receive_blood', methods=['GET', 'POST'])
+def receive_blood():
+    donors = []
+    searched = False
+    
+    if request.method == 'POST':
+        blood_group = request.form.get('blood_group')
+        location = request.form.get('location')
+        searched = True
+        
+        try:
+            query = """
+            SELECT u.full_name, d.blood_group, d.current_location, u.phone_number
+            FROM users u
+            JOIN donor_profiles d ON u.user_id = d.user_id
+            WHERE d.blood_group = :bg 
+            AND LOWER(d.current_location) = LOWER(:loc)
+            AND d.is_available = TRUE
+            """
+            donors = db.session.execute(text(query), {'bg': blood_group, 'loc': location}).fetchall()
+        except Exception as e:
+            flash(f"Search failed: {str(e)}", "error")
+    
+    return render_template('receive_blood.html', donors=donors, searched=searched)
+
+@app.route('/search_available_donors', methods=['POST'])
+def search_available_donors():
+    blood_group = request.form.get('blood_group')
+    location = request.form.get('location')
+    
+    try:
+        query = """
+        SELECT u.full_name, d.blood_group, d.current_location, u.phone_number
+        FROM users u
+        JOIN donor_profiles d ON u.user_id = d.user_id
+        WHERE d.blood_group = :bg 
+        AND LOWER(d.current_location) = LOWER(:loc)
+        AND d.is_available = TRUE
+        """
+        donors = db.session.execute(text(query), {'bg': blood_group, 'loc': location}).fetchall()
+    except Exception as e:
+        flash(f"Search failed: {str(e)}", "error")
+        donors = []
+    
+    return render_template('receive_blood.html', donors=donors, searched=True)
+
+# ========== DONATE BLOOD ==========
+@app.route('/donate_blood')
+def donate_blood():
+    # Redirect to choice page
+    return render_template('donate_choice.html')
+
+@app.route('/donor_signup', methods=['GET', 'POST'])
+def donor_signup():
     if request.method == 'POST':
         full_name = request.form.get('full_name')
         email = request.form.get('email')
-        phone = request.form.get('phone')
+        phone_number = request.form.get('phone_number')
         password = request.form.get('password')
-        user_type = request.form.get('user_type')
         blood_group = request.form.get('blood_group')
-
-        if not all([full_name, email, phone, password, user_type]):
-            flash("All fields are required", "error")
-            return redirect(url_for('signup'))
-
-        # [FIX] Check if email exists BEFORE creating user
-        existing_user = db.session.execute(
-            text("SELECT 1 FROM users WHERE email = :email"), 
-            {'email': email}
-        ).fetchone()
+        location = request.form.get('location')
         
-        if existing_user:
-            flash("This email is already registered. Please Login.", "error")
-            return redirect(url_for('signup'))
-
-        hashed_pw = generate_password_hash(password, method='pbkdf2:sha256')
-
+        if not all([full_name, email, phone_number, password, blood_group, location]):
+            flash("All fields are required", "error")
+            return redirect(url_for('donor_signup'))
+        
         try:
-            # 1. Create User
+            # Check if email already exists
+            existing = db.session.execute(
+                text("SELECT user_id FROM users WHERE email = :email AND user_type = 'donor'"),
+                {'email': email}
+            ).fetchone()
+            
+            if existing:
+                # Email already registered
+                flash("Account already exists with this email. Please login instead.", "error")
+                return redirect(url_for('donor_login'))
+            
+            # Create new donor user
+            hashed_pw = generate_password_hash(password, method='pbkdf2:sha256')
             query = """
             INSERT INTO users (full_name, email, password_hash, phone_number, user_type, registration_timestamp)
-            VALUES (:name, :email, :pw, :phone, :type, :ts) RETURNING user_id
+            VALUES (:name, :email, :pw, :phone, 'donor', :ts) RETURNING user_id
             """
             result = db.session.execute(text(query), {
-                'name': full_name, 'email': email, 'pw': hashed_pw,
-                'phone': phone, 'type': user_type, 'ts': datetime.utcnow()
+                'name': full_name,
+                'email': email,
+                'pw': hashed_pw,
+                'phone': phone_number,
+                'ts': datetime.utcnow()
             })
             user_id = result.fetchone()[0]
+            
+            # Create donor profile
+            db.session.execute(text("""
+                INSERT INTO donor_profiles (user_id, blood_group, current_location, is_available)
+                VALUES (:uid, :bg, :loc, TRUE)
+            """), {'uid': user_id, 'bg': blood_group, 'loc': location})
+            
             db.session.commit()
-
-            # 2. If Donor, Create Profile
-            if user_type == 'donor':
-                db.session.execute(text("""
-                    INSERT INTO donor_profiles (user_id, blood_group, current_location, is_available)
-                    VALUES (:uid, :bg, 'Location Not Set', TRUE)
-                """), {'uid': user_id, 'bg': blood_group})
-                db.session.commit()
-
-            session['user_id'] = user_id
-            session['user_type'] = user_type
-
-            # 3. Route to Portal
-            if user_type == 'donor':
-                return redirect(url_for('donor_portal', user_id=user_id))
-            elif user_type == 'receiver':
-                return redirect(url_for('receiver_portal', user_id=user_id))
-
+            
+            # Auto-login the donor
+            session['donor_id'] = user_id
+            session['user_type'] = 'donor'
+            session.permanent = True
+            session.modified = True
+            
+            flash("Registration successful! Welcome!", "success")
+            return redirect(url_for('donor_dashboard', donor_id=user_id))
+            
         except Exception as e:
             db.session.rollback()
-            flash(f"System Error: {str(e)}", "error")
-            return redirect(url_for('signup'))
+            flash(f"Registration failed: {str(e)}", "error")
+            return redirect(url_for('donor_signup'))
 
-    return render_template('signup.html')
+    return render_template('donor_signup.html')
+
+@app.route('/donor_login', methods=['GET', 'POST'])
+def donor_login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        if not email or not password:
+            flash("Email and password are required", "error")
+            return redirect(url_for('donor_login'))
+        
+        try:
+            query = """
+            SELECT u.user_id, u.password_hash FROM users u 
+            WHERE u.email = :email AND u.user_type = 'donor'
+            """
+            result = db.session.execute(text(query), {'email': email}).fetchone()
+            
+            if result:
+                user_id = result[0]
+                hashed_pw = result[1]
+                
+                if check_password_hash(hashed_pw, password):
+                    session['donor_id'] = user_id
+                    session['user_type'] = 'donor'
+                    session.permanent = True
+                    session.modified = True
+                    flash("Login successful!", "success")
+                    return redirect(url_for('donor_dashboard', donor_id=user_id))
+                else:
+                    flash("Invalid password", "error")
+            else:
+                flash("No account found with this email", "error")
+        except Exception as e:
+            flash(f"Login failed: {str(e)}", "error")
+    
+    return render_template('donor_login.html')
+
+@app.route('/donor_dashboard/<donor_id>')
+def donor_dashboard(donor_id):
+    # Get donor_id from session (more reliable than URL parameter)
+    session_donor_id = session.get('donor_id')
+    
+    print(f"\n[DASHBOARD] Loading for URL param: {donor_id}")
+    print(f"[DASHBOARD] Session donor_id: {session_donor_id}")
+    
+    # If no session, redirect to login
+    if not session_donor_id:
+        print(f"[DASHBOARD] No session - redirecting to login")
+        flash("Please login first", "error")
+        return redirect(url_for('donor_login'))
+    
+    try:
+        # Clear session cache to get fresh data from database
+        db.session.expunge_all()
+        
+        # Use session donor_id for security
+        query = """
+        SELECT u.user_id, u.full_name, u.email, u.phone_number, d.blood_group, d.current_location, d.is_available
+        FROM users u
+        JOIN donor_profiles d ON u.user_id = d.user_id
+        WHERE u.user_id = :uid AND u.user_type = 'donor'
+        """
+        donor_info = db.session.execute(text(query), {'uid': session_donor_id}).fetchone()
+        
+        if not donor_info:
+            print(f"[DASHBOARD] Donor profile not found - redirecting to login")
+            flash("Donor profile not found", "error")
+            return redirect(url_for('donor_login'))
+        
+        print(f"[DASHBOARD] Loaded: {donor_info[1]} - is_available: {donor_info[6]}")
+        
+        response = make_response(render_template('donor_dashboard.html',
+                             donor_id=session_donor_id,
+                             donor_name=donor_info[1],
+                             donor_email=donor_info[2],
+                             donor_phone=donor_info[3],
+                             donor_blood_group=donor_info[4],
+                             donor_location=donor_info[5],
+                             donor_available=donor_info[6]))
+        
+        # Prevent browser caching
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        return response
+    except Exception as e:
+        print(f"[DASHBOARD] ERROR: {str(e)}")
+        flash(f"Error loading profile: {str(e)}", "error")
+        return redirect(url_for('donor_login'))
+
+@app.route('/update_donor_availability_self/<donor_id>', methods=['POST'])
+def update_donor_availability_self(donor_id):
+    print(f"\n{'='*60}")
+    print(f"[ENDPOINT CALLED] /update_donor_availability_self/{donor_id}")
+    print(f"{'='*60}")
+    
+    # Check if user is logged in
+    session_donor_id = session.get('donor_id')
+    print(f"[LOG] Session donor_id: {session_donor_id}")
+    print(f"[LOG] URL donor_id: {donor_id}")
+    
+    if not session_donor_id:
+        print(f"[LOG] ERROR: No session donor_id")
+        return jsonify({'success': False, 'message': 'Please login first'})
+    
+    try:
+        print(f"[LOG] Clearing session cache...")
+        db.session.expunge_all()
+        
+        print(f"[LOG] Querying current status...")
+        result = db.session.execute(
+            text("SELECT is_available FROM donor_profiles WHERE user_id = :uid"),
+            {'uid': session_donor_id}
+        ).fetchone()
+        
+        if not result:
+            print(f"[LOG] ERROR: Donor profile not found")
+            return jsonify({'success': False, 'message': 'Donor profile not found'})
+        
+        current_status = result[0]
+        print(f"[LOG] Current status: {current_status}")
+        
+        new_status = not current_status
+        print(f"[LOG] New status: {new_status}")
+        
+        print(f"[LOG] Executing UPDATE...")
+        db.session.execute(
+            text("UPDATE donor_profiles SET is_available = :status WHERE user_id = :uid"),
+            {'status': new_status, 'uid': session_donor_id}
+        )
+        
+        print(f"[LOG] Committing...")
+        db.session.commit()
+        print(f"[LOG] ✅ Commit successful")
+        
+        status_text = "Available" if new_status else "Not Available"
+        print(f"[LOG] Returning success: {status_text}")
+        print(f"{'='*60}\n")
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Status updated to: {status_text}',
+            'new_status': new_status,
+            'status_text': status_text
+        })
+        
+    except Exception as e:
+        print(f"[LOG] ❌ ERROR: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        db.session.rollback()
+        print(f"{'='*60}\n")
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
+@app.route('/donor_logout')
+def donor_logout():
+    session.pop('donor_id', None)
+    session.pop('user_type', None)
+    flash("Logged out successfully", "success")
+    return redirect(url_for('donate_blood'))
+
+# ========== NGO PORTAL LOGIN CHECK ==========
+@app.route('/ngo_portal_check', methods=['GET'])
+def ngo_portal_check():
+    # Redirect to NGO signup/login if not authenticated
+    if session.get('user_type') == 'ngo':
+        return redirect(url_for('ngo_portal', user_id=session['user_id']))
+    return redirect(url_for('ngo_login'))
+
+@app.route('/ngo_login', methods=['GET', 'POST'])
+def ngo_login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        try:
+            query = """
+            SELECT user_id, password_hash FROM users WHERE email = :email AND user_type = 'ngo'
+            """
+            result = db.session.execute(text(query), {'email': email}).fetchone()
+            
+            if result and check_password_hash(result[1], password):
+                session['user_id'] = result[0]
+                session['user_type'] = 'ngo'
+                return redirect(url_for('ngo_portal', user_id=result[0]))
+            else:
+                flash("Invalid credentials", "error")
+        except Exception as e:
+            flash(f"Login failed: {str(e)}", "error")
+    
+    return render_template('ngo_login.html')
 
 @app.route('/ngo_signup', methods=['GET', 'POST'])
 def ngo_signup():
-    # [FIX] SMART REDIRECT: If already logged in, go straight to Dashboard
     if 'user_id' in session and session.get('user_type') == 'ngo':
         return redirect(url_for('ngo_portal', user_id=session['user_id']))
     
@@ -102,10 +356,8 @@ def ngo_signup():
         phone = request.form.get('phone')
         password = request.form.get('password')
         ngo_id = request.form.get('ngo_id')
-        full_name = request.form.get('full_name')
-        email = request.form.get('email')
 
-        # [FIX] Check for existing email first
+        # Check for existing email
         existing_user = db.session.execute(
             text("SELECT 1 FROM users WHERE email = :email"), 
             {'email': email}
@@ -142,191 +394,167 @@ def ngo_signup():
 
     return render_template('ngo_signup.html')
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-
-        try:
-            query = """
-            SELECT user_id, password_hash, user_type FROM users WHERE email = :email
-            """
-            result = db.session.execute(text(query), {'email': email}).fetchone()
-
-            if result:
-                # User Found, Check Password
-                if check_password_hash(result[1], password):
-                    session['user_id'] = result[0]
-                    session['user_type'] = result[2]
-
-                    if result[2] == 'donor':
-                        return redirect(url_for('donor_portal', user_id=result[0]))
-                    elif result[2] == 'receiver':
-                        return redirect(url_for('receiver_portal', user_id=result[0]))
-                    elif result[2] == 'ngo':
-                        return redirect(url_for('ngo_portal', user_id=result[0]))
-                else:
-                    flash("Incorrect password. Please try again.", "error")
-            else:
-                # User Not Found
-                flash("No account registered with this email. Please Sign Up.", "error")
-
-        except Exception as e:
-            flash(f"Login failed: {str(e)}", "error")
-
-        return redirect(url_for('login'))
-
-    return render_template('login.html')
-
-# --- DONOR PORTAL (Shows peers with same blood group) ---
-@app.route('/donor_portal/<user_id>')
-def donor_portal(user_id):
-    if str(session.get('user_id')) != str(user_id) or session.get('user_type') != 'donor':
-        flash("Unauthorized access", "error")
-        return redirect(url_for('login'))
-
-    # Get Current Donor's Info
-    my_profile = db.session.execute(text(
-        "SELECT blood_group, current_location FROM donor_profiles WHERE user_id = :uid"
-    ), {'uid': user_id}).fetchone()
-    
-    my_bg = my_profile[0] if my_profile else 'Unknown'
-
-    # Get list of OTHER donors with SAME Blood Group (Irrespective of location)
-    query = """
-    SELECT u.full_name, d.blood_group, d.current_location, u.phone_number
-    FROM users u
-    JOIN donor_profiles d ON u.user_id = d.user_id
-    WHERE d.blood_group = :bg AND u.user_id != :uid
-    """
-    peers = db.session.execute(text(query), {'bg': my_bg, 'uid': user_id}).fetchall()
-
-    return render_template('donor_portal.html', user_id=user_id, blood_group=my_bg, peers=peers)
-
-# --- NGO PORTAL ---
-# --- NGO PORTAL & MANAGEMENT ---
+# ========== NGO PORTAL ==========
 @app.route('/ngo_portal/<user_id>')
 def ngo_portal(user_id):
     if str(session.get('user_id')) != str(user_id) or session.get('user_type') != 'ngo':
         flash("Login as NGO first", "error")
-        return redirect(url_for('login'))
-
-    # 1. Fetch Active Donors
-    donors = db.session.execute(text("""
-        SELECT u.user_id, u.full_name, d.blood_group, d.current_location, u.phone_number 
-        FROM users u JOIN donor_profiles d ON u.user_id = d.user_id
-    """)).fetchall()
-
-    # 2. Fetch COMPLETE Donation History (Joined with User Names)
-    # This replaces the raw IDs with actual names for the NGO admin
-    history_query = """
-        SELECT 
-            d.donation_id, 
-            d.donation_date, 
-            d.location, 
-            d.verified,
-            u_donor.full_name AS donor_name,
-            u_receiver.full_name AS receiver_name,
-            d.donor_id,
-            d.receiver_id
-        FROM donations d
-        JOIN users u_donor ON d.donor_id = u_donor.user_id
-        LEFT JOIN users u_receiver ON d.receiver_id = u_receiver.user_id
-        ORDER BY d.donation_date DESC
-    """
-    donations = db.session.execute(text(history_query)).fetchall()
-
-    return render_template('ngo_portal.html', 
-                         donors=donors, 
-                         donations=donations, 
-                         user_id=user_id)
-
-# --- EDIT DONATION ROUTE ---
-@app.route('/edit_donation/<user_id>', methods=['POST'])
-def edit_donation(user_id):
-    donation_id = request.form.get('donation_id')
-    location = request.form.get('location')
-    date = request.form.get('donation_date')
-    status = request.form.get('verified') # 'on' if checked, None if not
-
-    is_verified = True if status else False
-
-    try:
-        query = """
-            UPDATE donations 
-            SET location = :loc, donation_date = :date, verified = :ver
-            WHERE donation_id = :did
-        """
-        db.session.execute(text(query), {
-            'loc': location, 
-            'date': date, 
-            'ver': is_verified, 
-            'did': donation_id
-        })
-        db.session.commit()
-        flash("Record updated successfully", "success")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Update failed: {str(e)}", "error")
-
-    return redirect(url_for('ngo_portal', user_id=user_id))
-
-# --- DELETE DONATION ROUTE ---
-@app.route('/delete_donation/<user_id>/<int:donation_id>')
-def delete_donation(user_id, donation_id):
-    try:
-        db.session.execute(text("DELETE FROM donations WHERE donation_id = :did"), {'did': donation_id})
-        db.session.commit()
-        flash("Record deleted permanently", "success")
-    except Exception as e:
-        db.session.rollback()
-        flash("Could not delete record", "error")
+        return redirect(url_for('ngo_login'))
     
-    return redirect(url_for('ngo_portal', user_id=user_id))
-
-# --- RECEIVER PORTAL (Search by Blood Group AND Location) ---
-@app.route('/receiver_portal/<user_id>')
-def receiver_portal(user_id):
-    if str(session.get('user_id')) != str(user_id) or session.get('user_type') != 'receiver':
-        flash("Unauthorized", "error")
-        return redirect(url_for('login'))
-    return render_template('receiver_portal.html', user_id=user_id)
-
-@app.route('/search_blood/<user_id>', methods=['POST'])
-def search_blood(user_id):
-    # Search logic: Match Blood Group AND Location
-    required_blood = request.form.get('required_blood')
-    required_location = request.form.get('location') # Capture location from form
+    # Clear SQLAlchemy session cache to get fresh data from database
+    db.session.expunge_all()
+    
+    # Fetch all donors with their complete donation history
+    donors = []
+    donations = []
+    search_query = None
     
     try:
-        # Case insensitive location search
-        query = """
-        SELECT u.full_name, d.blood_group, d.current_location, u.phone_number 
+        # Get all donors with latest info - force fresh query
+        donors_query = """
+        SELECT u.user_id, u.full_name, u.email, d.blood_group, d.current_location, u.phone_number, d.is_available
         FROM users u 
         JOIN donor_profiles d ON u.user_id = d.user_id
-        WHERE d.blood_group = :bg 
-        AND LOWER(d.current_location) = LOWER(:loc)
-        AND d.is_available = TRUE
+        WHERE u.user_type = 'donor'
+        ORDER BY u.full_name
         """
-        donors = db.session.execute(text(query), {'bg': required_blood, 'loc': required_location}).fetchall()
+        donors = db.session.execute(text(donors_query)).fetchall()
         
-        return render_template('receiver_portal.html', user_id=user_id, donors=donors, searched=True)
+        # Try to get all donations with donor info (donations table may not exist)
+        try:
+            donations_query = """
+            SELECT 
+                d.donation_id, 
+                d.donation_date, 
+                d.location, 
+                d.verified,
+                u.full_name AS donor_name,
+                u.email AS donor_email,
+                u.phone_number AS donor_phone,
+                dp.blood_group
+            FROM donations d
+            JOIN users u ON d.donor_id = u.user_id
+            JOIN donor_profiles dp ON u.user_id = dp.user_id
+            ORDER BY d.donation_date DESC
+            """
+            donations = db.session.execute(text(donations_query)).fetchall()
+        except Exception as donation_error:
+            # If donations table doesn't exist, continue without it
+            donations = []
+    except Exception as e:
+        flash(f"Error loading data: {str(e)}", "error")
+    
+    response = make_response(render_template('ngo_portal_new.html', 
+                         donors=donors, 
+                         donations=donations, 
+                         user_id=user_id,
+                         search_query=search_query))
+    
+    # Prevent caching to always get fresh data
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response
+
+@app.route('/search_donors_ngo/<user_id>', methods=['POST'])
+def search_donors_ngo(user_id):
+    if str(session.get('user_id')) != str(user_id) or session.get('user_type') != 'ngo':
+        flash("Unauthorized", "error")
+        return redirect(url_for('ngo_login'))
+    
+    # Clear SQLAlchemy session cache to get fresh data from database
+    db.session.expunge_all()
+    
+    search_query = request.form.get('search_query', '').strip()
+    donors = []
+    donations = []
+    
+    try:
+        if search_query:
+            # Search donors by name or email
+            donors_query = """
+            SELECT u.user_id, u.full_name, u.email, d.blood_group, d.current_location, u.phone_number, d.is_available
+            FROM users u 
+            JOIN donor_profiles d ON u.user_id = d.user_id
+            WHERE (LOWER(u.full_name) LIKE LOWER(:query) OR LOWER(u.email) LIKE LOWER(:query))
+            AND u.user_type = 'donor'
+            ORDER BY u.full_name
+            """
+            donors = db.session.execute(text(donors_query), {'query': f"%{search_query}%"}).fetchall()
+            
+            # Try to get donations for searched donors (donations table may not exist)
+            if donors:
+                try:
+                    donor_ids = [d[0] for d in donors]
+                    placeholders = ','.join([str(did) for did in donor_ids])
+                    donations_query = f"""
+                    SELECT 
+                        d.donation_id, 
+                        d.donation_date, 
+                        d.location, 
+                        d.verified,
+                        u.full_name AS donor_name,
+                        u.email AS donor_email,
+                        u.phone_number AS donor_phone,
+                        dp.blood_group
+                    FROM donations d
+                    JOIN users u ON d.donor_id = u.user_id
+                    JOIN donor_profiles dp ON u.user_id = dp.user_id
+                    WHERE d.donor_id IN ({placeholders})
+                    ORDER BY d.donation_date DESC
+                    """
+                    donations = db.session.execute(text(donations_query)).fetchall()
+                except Exception as donation_error:
+                    # If donations table doesn't exist, continue without it
+                    donations = []
+        else:
+            # Get all if no search
+            donors_query = """
+            SELECT u.user_id, u.full_name, u.email, d.blood_group, d.current_location, u.phone_number, d.is_available
+            FROM users u 
+            JOIN donor_profiles d ON u.user_id = d.user_id
+            WHERE u.user_type = 'donor'
+            ORDER BY u.full_name
+            """
+            donors = db.session.execute(text(donors_query)).fetchall()
+            
+            # Try to get all donations (donations table may not exist)
+            try:
+                donations_query = """
+                SELECT 
+                    d.donation_id, 
+                    d.donation_date, 
+                    d.location, 
+                    d.verified,
+                    u.full_name AS donor_name,
+                    u.email AS donor_email,
+                    u.phone_number AS donor_phone,
+                    dp.blood_group
+                FROM donations d
+                JOIN users u ON d.donor_id = u.user_id
+                JOIN donor_profiles dp ON u.user_id = dp.user_id
+                ORDER BY d.donation_date DESC
+                """
+                donations = db.session.execute(text(donations_query)).fetchall()
+            except Exception as donation_error:
+                # If donations table doesn't exist, continue without it
+                donations = []
     except Exception as e:
         flash(f"Search failed: {str(e)}", "error")
-        return redirect(url_for('receiver_portal', user_id=user_id))
-
-@app.route('/update_donor/<user_id>', methods=['POST'])
-def update_donor(user_id):
-    location = request.form.get('location')
-    try:
-        db.session.execute(text("UPDATE donor_profiles SET current_location = :loc WHERE user_id = :uid"), 
-                           {'loc': location, 'uid': user_id})
-        db.session.commit()
-        flash("Location updated!", "success")
-    except:
-        db.session.rollback()
-    return redirect(url_for('donor_portal', user_id=user_id))
+    
+    response = make_response(render_template('ngo_portal_new.html', 
+                         donors=donors, 
+                         donations=donations, 
+                         user_id=user_id,
+                         search_query=search_query))
+    
+    # Prevent caching to always get fresh data
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response
 
 @app.route('/logout')
 def logout():

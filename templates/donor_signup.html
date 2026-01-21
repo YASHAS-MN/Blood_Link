@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up as Donor - LifePulse</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="subportal-bg">
+
+    <nav class="navbar">
+        <div class="logo">LIFE<span> PULSE</span></div>
+        <a href="/donate_blood" class="nav-btn">Back</a>
+    </nav>
+
+    <div style="max-width: 600px; margin: 3rem auto; padding: 0 5%;">
+        
+        <div class="form-container" style="padding: 3rem;">
+            <h2 style="color: white; margin-bottom: 2rem; text-align: center;">REGISTER AS A DONOR</h2>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div style="text-align: center; color: {% if category == 'error' %}var(--neo-red){% else %}#4CAF50{% endif %}; margin-bottom: 20px; background: {% if category == 'error' %}rgba(255, 77, 79, 0.1){% else %}rgba(76, 175, 80, 0.1){% endif %}; padding: 10px; border-radius: 5px;">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="/donor_signup" method="POST" style="display: grid; gap: 15px;">
+                
+                <div>
+                    <label class="input-label">Full Name</label>
+                    <input type="text" name="full_name" class="input-field" placeholder="Your full name" required style="margin: 0;">
+                </div>
+
+                <div>
+                    <label class="input-label">Email</label>
+                    <input type="email" name="email" class="input-field" placeholder="your.email@example.com" required style="margin: 0;">
+                </div>
+
+                <div>
+                    <label class="input-label">Phone Number</label>
+                    <input type="tel" name="phone_number" class="input-field" placeholder="10-digit phone number" required style="margin: 0;">
+                </div>
+
+                <div>
+                    <label class="input-label">Password</label>
+                    <input type="password" name="password" class="input-field" placeholder="Create a strong password" required style="margin: 0;">
+                </div>
+
+                <div>
+                    <label class="input-label">Blood Group</label>
+                    <select name="blood_group" class="input-field" required style="margin: 0;">
+                        <option value="">Select Blood Group</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="input-label">Location</label>
+                    <input type="text" name="location" class="input-field" placeholder="Your city or area" required style="margin: 0;">
+                </div>
+
+                <button type="submit" class="btn-full" style="padding: 12px; margin-top: 10px;">REGISTER</button>
+            </form>
+
+            <div style="text-align: center; margin-top: 2rem; color: #aaa;">
+                <p style="margin: 0 0 10px 0;">Already have an account?</p>
+                <a href="/donor_login" style="color: var(--neo-red); text-decoration: none; font-weight: bold;">Login here</a>
+            </div>
+        </div>
+    </div>
+
+    <section class="contact-section">
+        <h2>Contact Us</h2>
+        <div class="contact-info">
+            <p><strong>NGO Name:</strong> LifePulse Foundation</p>
+            <p><strong>Email:</strong> info@lifepulse.org</p>
+            <p><strong>Phone:</strong> +91-123-456-7890</p>
+            <p><strong>Address:</strong> 123 Blood Drive, City, State, India</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>Developed with ❤️ by Yashas M N, RVCE for saving lives | LifePulse 2026</p>
+    </footer>
+
+</body>
+</html>
