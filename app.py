@@ -2,7 +2,7 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+from sqlalchemy import text, bindparam
 from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -16,7 +16,6 @@ app = Flask(__name__,
             template_folder='templates',
             static_folder='static')
 
-# Ensure your .env matches this or update manually
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = os.getenv('SECRET_KEY') or 'blood_save_life_2026'
@@ -24,6 +23,50 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 
 db = SQLAlchemy(app)
+
+# Recipient blood group -> compatible donor blood groups
+COMPATIBLE_DONOR_GROUPS = {
+    'O-': ['O-'],
+    'O+': ['O-', 'O+'],
+    'A-': ['O-', 'A-'],
+    'A+': ['O-', 'O+', 'A-', 'A+'],
+    'B-': ['O-', 'B-'],
+    'B+': ['O-', 'O+', 'B-', 'B+'],
+    'AB-': ['O-', 'A-', 'B-', 'AB-'],
+    'AB+': ['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'],
+}
+
+
+def get_compatible_donor_groups(required_blood_group):
+    """Return donor blood groups that can donate to the required recipient group."""
+    if not required_blood_group:
+        return []
+    normalized_group = required_blood_group.strip().upper()
+    return COMPATIBLE_DONOR_GROUPS.get(normalized_group, [])
+
+
+def find_available_compatible_donors(required_blood_group, location):
+    """Fetch available donors by compatibility and location."""
+    compatible_groups = get_compatible_donor_groups(required_blood_group)
+    normalized_location = (location or '').strip()
+
+    if not compatible_groups or not normalized_location:
+        return []
+
+    query = """
+    SELECT u.full_name, d.blood_group, d.current_location, u.phone_number
+    FROM users u
+    JOIN donor_profiles d ON u.user_id = d.user_id
+    WHERE d.blood_group IN :compatible_groups
+    AND LOWER(d.current_location) = LOWER(:loc)
+    AND d.is_available = TRUE
+    """
+
+    stmt = text(query).bindparams(bindparam('compatible_groups', expanding=True))
+    return db.session.execute(
+        stmt,
+        {'compatible_groups': compatible_groups, 'loc': normalized_location}
+    ).fetchall()
 
 # ========== HOME & PORTAL ROUTES ==========
 @app.route('/')
@@ -46,15 +89,7 @@ def receive_blood():
         searched = True
         
         try:
-            query = """
-            SELECT u.full_name, d.blood_group, d.current_location, u.phone_number
-            FROM users u
-            JOIN donor_profiles d ON u.user_id = d.user_id
-            WHERE d.blood_group = :bg 
-            AND LOWER(d.current_location) = LOWER(:loc)
-            AND d.is_available = TRUE
-            """
-            donors = db.session.execute(text(query), {'bg': blood_group, 'loc': location}).fetchall()
+            donors = find_available_compatible_donors(blood_group, location)
         except Exception as e:
             flash(f"Search failed: {str(e)}", "error")
     
@@ -66,15 +101,7 @@ def search_available_donors():
     location = request.form.get('location')
     
     try:
-        query = """
-        SELECT u.full_name, d.blood_group, d.current_location, u.phone_number
-        FROM users u
-        JOIN donor_profiles d ON u.user_id = d.user_id
-        WHERE d.blood_group = :bg 
-        AND LOWER(d.current_location) = LOWER(:loc)
-        AND d.is_available = TRUE
-        """
-        donors = db.session.execute(text(query), {'bg': blood_group, 'loc': location}).fetchall()
+        donors = find_available_compatible_donors(blood_group, location)
     except Exception as e:
         flash(f"Search failed: {str(e)}", "error")
         donors = []
@@ -393,6 +420,108 @@ def ngo_signup():
             return redirect(url_for('ngo_signup'))
 
     return render_template('ngo_signup.html')
+
+# ========== BLOOD REQUEST HANDLING ==========
+@app.route('/create_blood_request', methods=['POST'])
+def create_blood_request():
+    # 1. Get data from the form (Hidden inputs in your HTML)
+    patient_name = (request.form.get('patient_name') or 'Emergency Request').strip()
+    required_blood_group = request.form.get('blood_group')
+    hospital_location = request.form.get('location')
+    
+    # 2. Check if user is logged in (Optional: If you want anonymous requests, skip this)
+    user_id = session.get('user_id') 
+    donors = []
+    
+    try:
+        # 3. Insert into blood_requests table
+        query = """
+        INSERT INTO blood_requests 
+        (user_id, patient_name, required_blood_group, hospital_location, status, requested_at)
+        VALUES (:uid, :pname, :bg, :loc, 'open', :ts)
+        """
+        db.session.execute(text(query), {
+            'uid': user_id, # Can be None if anonymous
+            'pname': patient_name,
+            'bg': required_blood_group,
+            'loc': hospital_location,
+            'ts': datetime.utcnow()
+        })
+        db.session.commit()
+        donors = find_available_compatible_donors(required_blood_group, hospital_location)
+        if donors:
+            flash(f"{len(donors)} compatible donor(s) found in your area.", "success")
+        else:
+            flash("Request posted! Donors in your area will be notified.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error creating request: {str(e)}", "error")
+    
+    return render_template('receive_blood.html', donors=donors, searched=True)
+
+@app.route('/log_donation', methods=['POST'])
+def log_donation():
+    # Only NGOs or the Receiver should probably be able to do this, 
+    # but for now, let's allow it to be triggered by the system.
+    
+    donor_id = request.form.get('donor_id')
+    receiver_id = session.get('user_id') # The person logged in receiving blood
+    location = request.form.get('location')
+    
+    if not receiver_id:
+        flash("You must be logged in to confirm a donation received.", "error")
+        return redirect(url_for('user_portal')) # Or login page
+
+    try:
+        # 1. Create the donation record
+        query = """
+        INSERT INTO donations (donor_id, receiver_id, donation_date, location, verified)
+        VALUES (:did, :rid, :date, :loc, FALSE)
+        """
+        db.session.execute(text(query), {
+            'did': donor_id,
+            'rid': receiver_id,
+            'date': datetime.utcnow().date(),
+            'loc': location
+        })
+        
+        # 2. Mark donor as unavailable (Optional: 3 month cooling period)
+        update_query = "UPDATE donor_profiles SET is_available = FALSE WHERE user_id = :did"
+        db.session.execute(text(update_query), {'did': donor_id})
+        
+        db.session.commit()
+        flash("Donation recorded! Waiting for NGO verification.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error logging donation: {str(e)}", "error")
+        
+    return redirect(url_for('index'))
+
+@app.route('/verify_donation/<int:donation_id>', methods=['POST'])
+def verify_donation(donation_id):
+    if session.get('user_type') != 'ngo':
+        flash("Unauthorized", "error")
+        return redirect(url_for('ngo_login'))
+        
+    ngo_id = session.get('user_id')
+    
+    try:
+        query = """
+        UPDATE donations 
+        SET verified = TRUE, ngo_id = :nid 
+        WHERE donation_id = :did
+        """
+        db.session.execute(text(query), {'nid': ngo_id, 'did': donation_id})
+        db.session.commit()
+        
+        flash("Donation verified successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Verification failed: {str(e)}", "error")
+        
+    return redirect(url_for('ngo_portal', user_id=ngo_id))
 
 # ========== NGO PORTAL ==========
 @app.route('/ngo_portal/<user_id>')
