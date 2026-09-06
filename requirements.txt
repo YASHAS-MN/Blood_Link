@@ -1,0 +1,7 @@
+Flask
+Flask-SQLAlchemy
+SQLAlchemy
+python-dotenv
+Werkzeug
+gunicorn
+psycopg2-binary
